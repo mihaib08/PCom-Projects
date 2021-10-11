@@ -1,6 +1,6 @@
 # Communication Protocols Projects [2020-2021]
 
-The projects developed for the *Communication Protocols* class, gradually covering some of the *layers* in the **ISO/OSI** model:
+The projects developed for the *Communication Protocols* class, gradually covering **ISO/OSI** model by some of its *layers*:
 
 01. *Router* simulator - **data link** layer
 02. *Client-Server* App - **transport** layer

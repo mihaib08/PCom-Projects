@@ -1,0 +1,25 @@
+> am considerat NR_DESTINATAR ca fiind numarul care i se atribuie 
+  clientului <DESTINATAR> cand se conecteaza
+
+   - este cel afisat la comanda LIST pentru 
+     linia corespunzatoare lui DESTINATAR
+
+> am folosit unordered_map-uri pentru a gestiona clientii si socketii lor
+
+> pentru lista de clienti am folosit un vector, astfel ca la adaugarea unui nou client
+  se adauga un nou element in vector
+
+> cand un client de deconecteaza, acesta devine inactiv
+   - am simulat acest lucru prin user_sock[client] = -1 -> nu mai are socket
+
+> cand trimit un mesaj de la un client la altul, il alcatuiesc ca fiind de forma
+  <sender_nickname>: MESAJ
+
+>> am dezactivat algoritmul lui Nagle pentru a trimite
+   mesajele imediat de la un client la altul
+
+> atat serverul, cat si clientul se pot inchide prin apelarea comenzii exit
+
+
+
+

@@ -1,0 +1,145 @@
+/**
+ * Mihai-Eugen Barbu [2020-2021]
+ * 325CA
+ */
+
+==== PC - Tema 3 - Client Web. Comunicatie cu REST API ====
+
+> Precizari:
+
+    - am folosit fisierele puse la dispozitie in laboratorul 10
+
+    - atat pentru parsarea raspunsurilor,
+      cat si pentru formarea payload-urilor
+      am folosit _parson_ [1]
+
+    - daca se introduce de la tastatura o comanda
+      diferita de cele precizate, atunci se va afisa
+      un mesaj de eroare
+
+    - odata ce un utilizator se autentifica, acesta nu va
+      putea sa dea comenzile de register, respectiv login,
+      pana cand nu se delogheaza, primind o eroare
+
+    - fiecare comanda se realizeaza prin deschiderea (open_connection()),
+      respectiv inchiderea (close_connection()) conexiunii;
+
+
+> Implementarea comenzilor:
+
+    ~ register
+
+        ^ se preiau username, password de la tastatura
+        ^ folosind _parson_ [2], se formeaza payload-ul
+          necesar cererii
+
+        ^ se verifica daca in raspunsul de la server:
+
+          - s-au primit date -> se apeleaza check_log()
+             --> s-a primit o eroare, care este extrasa,
+                 preluand mai intai raspunsul de tip JSON,
+                 folosind basic_extract_json_response(),
+                 dupa care se creeaza (JSON_Value) *val
+                 si (JSON_Object) *obj corespunzatoare
+                 mesajului
+
+            --> se extrage din campul "error" mesajul primit
+
+          - nu s-au primit date -> inregistrarea a avut succes
+
+    ~ login
+
+        ^ se preiau username, password de la tastatura
+        ^ folosind _parson_ [2], se formeaza payload-ul
+          necesar cererii
+
+        ^ se verifica, asemanator comenzii register, daca este cazul,
+          eroarea primita de la server, aceasta fiind afisata
+
+        ^ in cazul in care nu s-a primit eroare, atunci autentificarea
+          a avut loc cu succes, caz in care este extras cookie-ul de sesiune
+
+    ~ enter_library
+
+        ^ se trimite cererea de tip GET folosind cookie-ul de sesiune curent,
+          dupa care se verifica - lib_access() - raspunsul primit de la server,
+          incercand sa se extraga mesajul de eroare ("error"), iar in cazul in care
+          acesta nu exista, se extrage token-ul corespunzator din campul "token"
+          si se salveaza
+
+    ~ get_books
+
+        ^ folosind cookie-ul si token-ul curente, se trimite cererea de tip GET
+          corespunzatoare, dupa care se verifica raspunsul - books_check() -
+
+           - se extrage raspunsul in format JSON
+
+           - daca este un mesaj de eroare, atunci se afiseaza;
+           - daca este gol, atunci inseamna ca nu exista carti in biblioteca
+           - in caz contrar, se afiseaza cartile din biblioteca
+                -- se interpreteaza raspunsul ca un array de carti, iar folosind
+                   json_value_get_array(), se parcurge, extragandu-se din fiecare
+                   element campurile "id", "title" [3]
+
+    ~ get_book
+
+        ^ se formeaza url-ul corespunzator id-ului cartii
+          pentru care se doresc informatiile, dupa care se trimite cererea
+          folosind cookie-ul si token-ul curente
+
+        ^ se extrage raspunsul in format JSON din cadrul celui
+          primit de la server - id_book_check(), dupa care:
+
+          - daca este o eroare, atunci se afiseaza
+          - in caz contrar, se afiseaza JSON-ul corespunzator cartii in format *pretty*
+               -> json_serialize_to_string_pretty()
+
+    ~ add_book
+
+        ^ se preiau informatiile title, author, genre, publisher,
+          se converteste informatia primita in promptul page_count
+          la un numar intreg folosind atoi()
+
+        ^ se formeaza payload-ul corespunzator mesajului - book_payload() -
+          dupa care se transmite cererea folosind cookie-ul si token-ul curente
+
+        ^ se extrage mesajul in format JSON, daca exista, din cadrul raspunsului
+          primit de la server - add_check() - iar in cazul in care acesta corespunde unei
+          erori, se afiseaza eroarea
+           - in caz contrar, cartea este adaugata cu succes
+
+        ^^ am observat ca uneori serverul trimite un raspuns de forma "Too many requests",
+           astfel ca in add_check() se verifica mai intai daca pe prima linie se gaseste
+           un TEXT_STATUS corespunzator acestei erori, pe care o afisez
+
+    ~ delete_book
+
+        ^ se formeaza url-ul corespunzator id-ului cartii care se doreste a fi stearsa,
+          dupa care se trimite la server cererea de tip DELETE cu token-ul si cookie-ul curente
+
+        ^ se verifica raspunsul primit de la server - delete_check() - iar in cazul in care
+          corespunde unei erori, atunci se afiseaza, in caz contrar cartea fiind stearsa cu succes
+
+    ~ logout
+
+        ^ se trimite cererea de tip GET la server, dupa care se extrage din raspuns
+          mesajul de tip JSON, iar daca exista, atunci se verifica ce contine
+          - log_check(), iar, in caz contrar, delogarea a avut succes si se sterg
+          cookie-ul si token-ul corespunzatoare sesiunii precedente
+
+    ~ exit
+
+        ^ inchide programul
+
+
+>> Documentatie
+
+1. https://github.com/kgabis/parson
+
+2. https://github.com/kgabis/parson#serialization
+     - crearea payload-ului pentru mesajele trimise catre server
+
+3. https://github.com/kgabis/parson#parsing-json
+     - parsarea unui array de json-uri
+
+

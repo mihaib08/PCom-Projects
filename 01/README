@@ -1,0 +1,87 @@
+/**
+ * Mihai-Eugen Barbu [2020-2021]
+ * 325CA
+ */
+
+==== PC - Tema 01 - Router ====
+
+<> Tabela de rutare
+
+     > parsare : am citit linie cu linie din fisierul primit ca
+                 argument campurile ca siruri de caractere,
+                 in ordine: prefix, next_hop, mask, interface,
+                 dupa care le-am convertit la tipurile specifice
+                 (uint32_t si int pentru interfata) folosind functia
+                 inet_aton();
+
+     > preprocesare : am sortat tabela - folosind qsort() - dupa
+                      prefix, iar in caz de egalitate, dupa masca
+                             -- O(Nlog(N)), N - dimensiunea tabelei
+
+     >> cautare : tinand cont de preprocesarea ^ -> am realizat o
+                  cautare *binara* a celui mai lung prefix comun
+                             -- O(log(N))
+
+<> Implementare ARP
+
+    > ARP Request - am verificat daca este un request catre un IP al
+                    router-ului, caz in care am actualizat header-ul
+                    de Ethernet (new-ether_dhost <- ether_shost
+                                 new-ether_shost <- router_mac)
+                    si am trimis un ARP Reply folosind send_arp()
+
+    > ARP Reply - am actualizat tabela ARP cu informatiile primite
+                  de la _sursa_ si verific daca exista pachete ce pot
+                  fi transmise acum, caz in care le trimit corespunzator (*)
+
+<> Implementare ICMP
+
+    > se verifica daca este un pachet de tip ICMP Echo catre un ip al router-ului,
+      caz in care se raspunde cu ICMP Echo Reply
+
+    > se verifica daca ttl <= 1, caz in care se trimite ICMP Time_Exceeded
+
+    > se verifica daca se poate gasi o ruta catre destinatie folosind tabela de
+      rutare, iar in caz negativ, se trimite ICMP Destination Unreachable
+
+    >> se trimit mesaje ICMP folosind functiile send_icmp() si send_icmp_error(),
+       avand campurile (type, code) completate conform tipului de mesaj trimis
+
+<> Procesul de dirijare al pachetelor
+
+    > pentru fiecare pachet *valid* se actualizeaza adresa sursa din header-ul de Ethernet
+      al pachetului cu adresa MAC a celei mai bune rute curente - best_route
+             -- se foloseste get_interface_mac() pentru a prelua adresa MAC corespunzatoare
+                interfetei best_route->interface
+
+    > se verifica daca intrarea corespunzatoare next_hop-ului (best_route->next_hop) se gaseste
+      in tabela ARP
+
+           -> in caz afirmativ, se actualizeaza si adresa destinatie din header-ul de Ethernet
+              cu adresa MAC a intrarii gasite si se trimite pachetul
+
+           -> in caz negativ, se trimite un ARP Request catre best_route->next_hop pe interfata
+              destinatie (best_route->interface) - cererea se trimite ca _broadcast_
+
+                 --> folosind trei cozi - q_pack, q_int, q_next - am salvat informatiile necesare
+                     transmiterii ulterioare - (packet *) p, best_route->interface, best_route->next_hop -
+                     unde *p - copie a pachetului m
+
+                 -> cand se va primi un ARP Reply de la destinatie, se ajunge in (*), de unde se extrag
+                    pachete de pe coada atat timp cat se gasesc intrarile necesare in tabela ARP
+
+                       -- se trimit pachetele folosind informatiile din cele trei cozi
+                          si intrarea corespunzatoare din tabela ARP
+
+
+<<>> ++Bonus : Am realizat implementarea algoritmului incremental descris in RFC 1624
+               tinand cont ca, dupa decrementarea campului ttl, singurul grup de 16 biti
+               modificat din *ip_hdr va fi cel care incepe la &ip_hdr->ttl.
+
+               Astfel, am calculat m - valoarea precedenta (inainte de ttl--),
+               iar folosind functia check_1624() se preia m' - valoarea actualizata,
+               care se vor inlocui in formula : check = ~(old_check + ~m + m')
+                                                      = ~(old_check - m + m') si se aduce
+               check la uint16_t (check < 0xFFFF).
+
+
